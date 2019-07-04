@@ -21,17 +21,33 @@ namespace WpfSeeds
     /// </summary>
     public partial class MainWindow : Window
     {
+        private volatile bool _shouldAnimate = false;
+
         public MainWindow()
         {
             InitializeComponent();
+            TbCount.TextChanged += TbCount_TextChanged;
+            Loaded += MainWindow_Loaded;
+            Closing += MainWindow_Closing;
         }
 
-        private void BtnAction_Click(object sender, RoutedEventArgs e)
+        private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            TbCount.TextChanged -= TbCount_TextChanged;
+            Loaded -= MainWindow_Loaded;
+            Closing -= MainWindow_Closing;
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            SetInterval();
+        }
+
+        private void SetInterval()
         {
             if (double.TryParse(TbCount.Text, out double tbValue))
             {
                 Slider.Value = tbValue;
-                //MainCanvas.Draw(100, tbValue);
             }
         }
 
@@ -40,23 +56,34 @@ namespace WpfSeeds
             TbCount.Text = Slider.Value.ToString();
             MainCanvas.Draw(200, Slider.Value);
         }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private void TbCount_TextChanged(object sender, TextChangedEventArgs e)
         {
-            //double max = Slider.Maximum;
-            //Task.Factory.StartNew(() =>
-            //{
-            //    double value = 0.3;
-            //    while (value < max)
-            //    {
-            //        value += 0.00001;
-            //        Thread.Sleep(10);
-            //        Dispatcher.Invoke(() =>
-            //        {
-            //            Slider.Value = value;
-            //        });
-            //    }
-            //});
+            SetInterval();
         }
+
+        private void BtnStart_Click(object sender, RoutedEventArgs e)
+        {
+            _shouldAnimate = !_shouldAnimate;
+            BtnStart.Content = _shouldAnimate ? "Stop" : "Start";
+
+            if (_shouldAnimate && double.TryParse(TbCount.Text, out double tbValue))
+            {
+                double max = Slider.Maximum;
+                Task.Factory.StartNew(() =>
+                {
+                    double value = tbValue;
+                    while (value < max && _shouldAnimate)
+                    {
+                        value += 0.00001;
+                        Thread.Sleep(10);
+                        Dispatcher.Invoke(() =>
+                        {
+                            Slider.Value = value;
+                        });
+                    }
+                });
+            }
+        }
+
     }
 }
